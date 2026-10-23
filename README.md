@@ -2,6 +2,8 @@
 
 CourtVision Intelligence is an end-to-end basketball analytics and scouting platform for the complete 2023/24 NBA regular season. It is designed as a data engineering and data analytics portfolio project: raw public data is validated, loaded into a PostgreSQL-ready warehouse, transformed into analytical marts, served through FastAPI, and presented in a responsive dark-themed dashboard.
 
+**Live demo:** [at-2201.github.io/courtvision-intelligence](https://at-2201.github.io/courtvision-intelligence/)
+
 ## What the project demonstrates
 
 ### Data engineering
