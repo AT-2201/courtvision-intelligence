@@ -13,7 +13,9 @@ const pages = [
   {id:"compare", label:"Compare", title:"Comparison room", kicker:"SIDE-BY-SIDE ANALYSIS", icon:"⇄"}
 ];
 
-const state = {selectedPlayer:1, selectedGame:data.games[0].id, selectedTeam:data.teams[0].abbr, compareIds:[5,1,3], conference:"All", leaderMetric:"pts"};
+const playerIdFor = name => data.players.find(player => player.name === name)?.id;
+const featuredPlayerIds = ["Nikola Jokić","Luka Dončić","Shai Gilgeous-Alexander"].map(playerIdFor).filter(Boolean);
+const state = {selectedPlayer:playerIdFor("Luka Dončić") || data.players[0].id, selectedGame:data.games[0].id, selectedTeam:data.teams[0].abbr, compareIds:featuredPlayerIds, conference:"All", leaderMetric:"pts"};
 const fmt = (value, digits = 1) => Number(value).toFixed(digits);
 const signed = value => `${value > 0 ? "+" : ""}${fmt(value)}`;
 const playerById = id => data.players.find(player => player.id === Number(id));
@@ -36,7 +38,7 @@ function emptyState(message) {
 }
 
 function similarity(target) {
-  const candidates = data.players.filter(player => player.id !== target.id && family(player.pos) === family(target.pos));
+  const candidates = data.players.filter(player => player.id !== target.id && player.totalMin >= 500 && family(player.pos) === family(target.pos));
   const pool = [target,...candidates];
   const metrics = ["pts","reb","ast","stl","blk","tov","ts"];
   const labels = {pts:"Scoring",reb:"Rebounding",ast:"Playmaking",stl:"Steals",blk:"Blocks",tov:"Turnovers",ts:"True shooting"};
@@ -56,11 +58,12 @@ function similarity(target) {
 function renderOverview() {
   const teams = data.teams.filter(team => state.conference === "All" || team.conference === state.conference).sort((a,b) => b.wins-a.wins);
   const leaderLabels = {pts:"PPG",reb:"RPG",ast:"APG",ts:"TS%"};
-  const leaders = [...data.players].sort((a,b) => b[state.leaderMetric]-a[state.leaderMetric]).slice(0,5);
+  const qualifiedPlayers = data.players.filter(player => player.games >= 58);
+  const leaders = [...qualifiedPlayers].sort((a,b) => b[state.leaderMetric]-a[state.leaderMetric]).slice(0,5);
   const best = [...data.teams].sort((a,b) => b.wins-a.wins)[0];
   const offense = [...data.teams].sort((a,b) => b.ortg-a.ortg)[0];
   const defense = [...data.teams].sort((a,b) => a.drtg-b.drtg)[0];
-  const scorer = [...data.players].sort((a,b) => b.pts-a.pts)[0];
+  const scorer = [...qualifiedPlayers].sort((a,b) => b.pts-a.pts)[0];
   const maxWins = Math.max(...teams.map(team => team.wins));
   const paceMin = Math.min(...data.teams.map(team => team.pace));
   const paceMax = Math.max(...data.teams.map(team => team.pace));
@@ -77,7 +80,7 @@ function renderOverview() {
     </section>
     <section class="dashboard-grid">
       <article class="panel standings-panel"><div class="panel-heading"><div><span class="eyebrow">RECORD RACE</span><h2>${state.conference === "All" ? "League" : `${state.conference}ern Conference`} standings</h2></div><button class="ghost-button" data-go="teams">Team lab <span>→</span></button></div><div class="standings-list">${teams.map((team,index) => `<button class="standing-row" data-team-jump="${team.abbr}"><span class="standing-rank">${String(index+1).padStart(2,"0")}</span>${teamBadge(team.abbr,true)}<span class="standing-name"><strong>${team.name}</strong><small>${team.conference} · ${signed(netRating(team))} NET</small></span><span class="record-bar"><i style="width:${team.wins/maxWins*100}%"></i></span><strong class="standing-record">${team.wins}<small>–${team.losses}</small></strong></button>`).join("")}</div></article>
-      <article class="panel leaders-panel"><div class="panel-heading stacked"><div><span class="eyebrow">PLAYER LEADERS</span><h2>Who is setting the pace?</h2></div><div class="metric-tabs">${[["pts","PTS"],["reb","REB"],["ast","AST"],["ts","TS%"]].map(([key,label]) => `<button class="${state.leaderMetric === key ? "active" : ""}" data-leader-metric="${key}">${label}</button>`).join("")}</div></div><div class="leader-list">${leaders.map((player,index) => `<button data-player-jump="${player.id}" class="leader-row ${index === 0 ? "first" : ""}"><span class="leader-rank">${index+1}</span>${teamBadge(player.team,true)}<span><strong>${player.name}</strong><small>${player.team} · ${player.pos}</small></span><b>${player[state.leaderMetric]}<small>${leaderLabels[state.leaderMetric]}</small></b></button>`).join("")}</div></article>
+      <article class="panel leaders-panel"><div class="panel-heading stacked"><div><span class="eyebrow">PLAYER LEADERS · 58+ GP</span><h2>Who is setting the pace?</h2></div><div class="metric-tabs">${[["pts","PTS"],["reb","REB"],["ast","AST"],["ts","TS%"]].map(([key,label]) => `<button class="${state.leaderMetric === key ? "active" : ""}" data-leader-metric="${key}">${label}</button>`).join("")}</div></div><div class="leader-list">${leaders.map((player,index) => `<button data-player-jump="${player.id}" class="leader-row ${index === 0 ? "first" : ""}"><span class="leader-rank">${index+1}</span>${teamBadge(player.team,true)}<span><strong>${player.name}</strong><small>${player.team} · ${player.pos}</small></span><b>${player[state.leaderMetric]}<small>${leaderLabels[state.leaderMetric]}</small></b></button>`).join("")}</div></article>
       <article class="panel landscape-panel"><div class="panel-heading"><div><span class="eyebrow">TEAM LANDSCAPE</span><h2>Pace vs. net rating</h2></div><div class="chart-legend"><span><i></i> Each dot is a team</span></div></div><div class="scatter-wrap"><span class="axis-label y">BETTER NET RATING</span><span class="axis-label x">FASTER PACE →</span><div class="scatter-grid"><i class="axis-v"></i><i class="axis-h"></i>${data.teams.map(team => { const x=6+((team.pace-paceMin)/(paceMax-paceMin||1))*88; const y=92-((netRating(team)-netMin)/(netMax-netMin||1))*80; return `<button class="scatter-dot" style="left:${x}%;top:${y}%" data-team-jump="${team.abbr}" aria-label="${team.name}: pace ${team.pace}, net rating ${signed(netRating(team))}"><span>${team.abbr}</span><em><strong>${team.name}</strong>Pace ${team.pace} · ${signed(netRating(team))} net</em></button>`; }).join("")}</div></div></article>
       <article class="panel results-panel"><div class="panel-heading"><div><span class="eyebrow">LATEST RESULTS</span><h2>Game tape</h2></div><button class="ghost-button" data-go="games">All games <span>→</span></button></div><div class="result-stack">${data.games.slice(0,4).map(game => `<button class="result-row" data-game-jump="${game.id}"><small>${game.date.slice(5).replace("-",".")}</small><span>${teamBadge(game.away,true)}<strong>${game.away}</strong><b>${game.awayScore}</b></span><i>—</i><span><b>${game.homeScore}</b><strong>${game.home}</strong>${teamBadge(game.home,true)}</span></button>`).join("")}</div></article>
     </section>`;
@@ -120,7 +123,7 @@ function renderPlayerDetail(player) {
 
 function renderPlayers() {
   const player = playerById(state.selectedPlayer) || data.players[0];
-  root.innerHTML = `<section class="workspace-toolbar"><div class="search-field"><span>⌕</span><input aria-label="Search players" placeholder="Find a player" id="player-search"></div><div class="toolbar-note">${data.players.length} players in demo dataset</div></section><section class="split-workspace"><div class="list-panel"><div class="list-label"><span>PLAYER</span><span>SCORING</span></div><div class="scroll-list">${playerList(player.id)}</div></div><article class="detail-panel">${renderPlayerDetail(player)}</article></section>`;
+  root.innerHTML = `<section class="workspace-toolbar"><div class="search-field"><span>⌕</span><input aria-label="Search players" placeholder="Find a player" id="player-search"></div><div class="toolbar-note">${data.meta.playerCount} players · complete regular season</div></section><section class="split-workspace"><div class="list-panel"><div class="list-label"><span>PLAYER</span><span>SCORING</span></div><div class="scroll-list">${playerList(player.id)}</div></div><article class="detail-panel">${renderPlayerDetail(player)}</article></section>`;
   document.querySelectorAll("[data-player]").forEach(button => button.addEventListener("click",() => { state.selectedPlayer=Number(button.dataset.player); renderPlayers(); }));
   document.querySelector("[data-scout-from-player]").addEventListener("click",() => { location.hash="scouting"; });
   bindListSearch("#player-search","[data-player]");
