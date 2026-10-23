@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="CourtVision Intelligence — basketball analytics and scouting portfolio platform.">
+    <title>CourtVision Intelligence</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/styles.css?v=1">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#overview" aria-label="CourtVision Intelligence home">
+          <span class="brand-mark">CV</span>
+          <span><strong>CourtVision</strong><small>INTELLIGENCE</small></span>
+        </a>
+        <nav id="primary-nav" aria-label="Primary navigation"></nav>
+        <div class="source-card">
+          <span class="eyebrow">DATA SOURCE</span>
+          <strong>Kaggle NBA Database</strong>
+          <span>2023/24 sample preview</span>
+          <span>CC BY-SA 4.0</span>
+        </div>
+      </aside>
+      <main>
+        <header class="topbar">
+          <div>
+            <span class="eyebrow" id="page-kicker">LEAGUE INTELLIGENCE</span>
+            <h1 id="page-title">Season command center</h1>
+          </div>
+          <div class="season-badge"><span></span> 2023/24 · SAMPLE</div>
+        </header>
+        <div id="page-root" class="page-root" aria-live="polite"></div>
+      </main>
+    </div>
+    <script src="assets/data.js?v=1"></script>
+    <script src="assets/app.js?v=1"></script>
+  </body>
+</html>
+

@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: player_season_stats
+    columns:
+      - name: season
+        tests: [not_null]
+      - name: player_id
+        tests: [not_null]
+      - name: games
+        tests: [not_null]
+  - name: team_season_stats
+    columns:
+      - name: season
+        tests: [not_null]
+      - name: team_id
+        tests: [not_null]
+

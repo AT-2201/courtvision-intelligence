@@ -1,0 +1,13 @@
+courtvision:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5433
+      user: courtvision
+      password: courtvision
+      dbname: courtvision
+      schema: analytics
+      threads: 4
+

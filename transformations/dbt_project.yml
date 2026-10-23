@@ -1,0 +1,13 @@
+name: courtvision
+version: 1.0.0
+config-version: 2
+profile: courtvision
+model-paths: ["models"]
+
+models:
+  courtvision:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
