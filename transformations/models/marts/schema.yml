@@ -2,6 +2,7 @@ version: 2
 
 models:
   - name: player_season_stats
+    description: One modeled season row per player with per-game and efficiency metrics.
     columns:
       - name: season
         tests: [not_null]
@@ -10,9 +11,19 @@ models:
       - name: games
         tests: [not_null]
   - name: team_season_stats
+    description: Team results, ratings and Four Factors aggregated from team game box scores.
     columns:
       - name: season
         tests: [not_null]
       - name: team_id
+        tests: [not_null]
+      - name: games
+        tests: [not_null]
+  - name: player_recent_form
+    description: Player game grain with rolling five- and ten-game production features.
+    columns:
+      - name: game_id
+        tests: [not_null]
+      - name: player_id
         tests: [not_null]
 

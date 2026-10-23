@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "courtvision-intelligence"
-version = "0.1.0"
+version = "0.2.0"
 description = "Basketball analytics and scouting portfolio platform"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["httpx>=0.27,<1", "pytest>=8,<9", "ruff>=0.8,<1"]
 kaggle = ["kagglehub>=0.3,<1"]
+warehouse = ["dbt-postgres>=1.8,<2"]
 
 [project.scripts]
 courtvision = "courtvision.cli:main"
@@ -27,7 +28,7 @@ courtvision = "courtvision.cli:main"
 packages = ["src/courtvision"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 testpaths = ["tests"]
 
 [tool.ruff]

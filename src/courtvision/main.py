@@ -7,11 +7,10 @@ from courtvision.api.routes import router
 
 app = FastAPI(
     title="CourtVision Intelligence API",
-    version="0.1.0",
-    description="Basketball analytics and scouting API foundation.",
+    version="0.2.0",
+    description="Serving layer for the CourtVision basketball analytics warehouse.",
 )
 app.include_router(router)
 
 static_dir = Path(__file__).resolve().parents[2] / "dist"
 app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
-

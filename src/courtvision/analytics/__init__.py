@@ -1,2 +1,1 @@
 """Analytical transformations for CourtVision."""
-

@@ -97,4 +97,3 @@ def similar_players(
         )
 
     return sorted(records, key=lambda item: item["similarity"], reverse=True)[:limit]
-

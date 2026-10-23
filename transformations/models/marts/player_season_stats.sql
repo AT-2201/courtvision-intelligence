@@ -9,7 +9,6 @@ aggregated as (
     select
         season,
         player_id,
-        max(team_id) as team_id,
         count(distinct game_id) as games,
         sum(minutes) as minutes,
         sum(points) as points,
@@ -22,9 +21,23 @@ aggregated as (
         sum(free_throws_attempted) as free_throws_attempted
     from player_games
     group by 1, 2
+),
+team_minutes as (
+    select
+        season,
+        player_id,
+        team_id,
+        sum(minutes) as minutes,
+        row_number() over (
+            partition by season, player_id
+            order by sum(minutes) desc, team_id
+        ) as team_rank
+    from player_games
+    group by 1, 2, 3
 )
 select
-    *,
+    aggregated.*,
+    team_minutes.team_id,
     round(points::numeric / nullif(games, 0), 2) as points_per_game,
     round(rebounds::numeric / nullif(games, 0), 2) as rebounds_per_game,
     round(assists::numeric / nullif(games, 0), 2) as assists_per_game,
@@ -33,4 +46,6 @@ select
         4
     ) as true_shooting_pct
 from aggregated
+inner join team_minutes using (season, player_id)
+where team_minutes.team_rank = 1
 

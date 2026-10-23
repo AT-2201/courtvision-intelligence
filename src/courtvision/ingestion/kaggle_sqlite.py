@@ -40,21 +40,15 @@ class KaggleSQLiteReader:
             for name in names:
                 safe_name = name.replace('"', '""')
                 columns = tuple(
-                    row[1]
-                    for row in connection.execute(f'PRAGMA table_info("{safe_name}")')
+                    row[1] for row in connection.execute(f'PRAGMA table_info("{safe_name}")')
                 )
-                count = connection.execute(
-                    f'SELECT COUNT(*) FROM "{safe_name}"'
-                ).fetchone()[0]
+                count = connection.execute(f'SELECT COUNT(*) FROM "{safe_name}"').fetchone()[0]
                 tables.append(SourceTable(name=name, columns=columns, row_count=count))
             return tables
 
     def find_table(self, *candidates: str) -> SourceTable | None:
         table_map = {table.name.casefold(): table for table in self.inspect()}
         matches = (
-            table_map[name.casefold()]
-            for name in candidates
-            if name.casefold() in table_map
+            table_map[name.casefold()] for name in candidates if name.casefold() in table_map
         )
         return next(matches, None)
-

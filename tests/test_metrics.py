@@ -8,4 +8,3 @@ def test_true_shooting_percentage() -> None:
 def test_possession_metrics_handle_zero() -> None:
     assert possessions(0, 0, 0, 0) == 0
     assert per_100(12, 0) == 0
-

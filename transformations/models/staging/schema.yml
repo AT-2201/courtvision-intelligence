@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: stg_games
+    description: One cleaned record per regular-season game.
+    columns:
+      - name: game_id
+        tests: [not_null, unique]
+      - name: game_date
+        tests: [not_null]
+      - name: home_team_id
+        tests: [not_null]
+      - name: away_team_id
+        tests: [not_null]
+
+  - name: stg_player_game_stats
+    description: Player box-score records with derived shooting metrics.
+    columns:
+      - name: player_game_stat_id
+        tests: [not_null, unique]
+      - name: game_id
+        tests: [not_null]
+      - name: player_id
+        tests: [not_null]
+
+  - name: stg_team_game_stats
+    description: Team box scores with possession and Four Factors inputs.
+    columns:
+      - name: team_game_stat_id
+        tests: [not_null, unique]
+      - name: game_id
+        tests: [not_null]
+      - name: team_id
+        tests: [not_null]

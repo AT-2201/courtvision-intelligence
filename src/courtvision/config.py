@@ -12,7 +12,7 @@ class Settings:
     )
     season: str = os.getenv("COURTVISION_SEASON", "2023-24")
     source_db: str = os.getenv("COURTVISION_SOURCE_DB", "data/raw/nba.sqlite")
+    source_csv_dir: str = os.getenv("COURTVISION_SOURCE_CSV_DIR", "data/raw/kaggle")
 
 
 settings = Settings()
-

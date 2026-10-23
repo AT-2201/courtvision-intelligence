@@ -12,4 +12,3 @@ def possessions(fga: float, offensive_rebounds: float, turnovers: float, fta: fl
 
 def per_100(value: float, estimated_possessions: float) -> float:
     return round(100 * value / estimated_possessions, 2) if estimated_possessions else 0.0
-

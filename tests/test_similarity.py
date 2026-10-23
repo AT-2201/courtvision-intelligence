@@ -36,4 +36,3 @@ def test_similarity_filters_position_and_explains_result() -> None:
     assert results[0]["player"]["name"] == "Match"
     assert len(results[0]["closest_traits"]) == 3
     assert len(results[0]["tradeoffs"]) == 2
-
