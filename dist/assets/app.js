@@ -15,7 +15,7 @@ const pages = [
 
 const playerIdFor = name => data.players.find(player => player.name === name)?.id;
 const featuredPlayerIds = ["Nikola Jokić","Luka Dončić","Shai Gilgeous-Alexander"].map(playerIdFor).filter(Boolean);
-const state = {selectedPlayer:playerIdFor("Luka Dončić") || data.players[0].id, selectedGame:data.games[0].id, selectedTeam:data.teams[0].abbr, compareIds:featuredPlayerIds, conference:"All", leaderMetric:"pts"};
+const state = {selectedPlayer:playerIdFor("Luka Dončić") || data.players[0].id, selectedGame:data.games[0].id, selectedTeam:data.teams[0].abbr, compareIds:featuredPlayerIds, compareQuery:"", conference:"All", leaderMetric:"pts"};
 const fmt = (value, digits = 1) => Number(value).toFixed(digits);
 const signed = value => `${value > 0 ? "+" : ""}${fmt(value)}`;
 const playerById = id => data.players.find(player => player.id === Number(id));
@@ -170,14 +170,68 @@ function buildRadarChart(selected,metrics) {
   </div>`;
 }
 
+const foldSearchText = value => value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+
+function compareSearchMatches(query) {
+  const folded = foldSearchText(query.trim());
+  if(!folded || state.compareIds.length >= 4) return [];
+  return data.players.filter(player => {
+    if(state.compareIds.includes(player.id)) return false;
+    return foldSearchText(`${player.name} ${player.team} ${player.pos}`).includes(folded);
+  }).slice(0,8);
+}
+
+function compareSearchResults() {
+  if(state.compareIds.length >= 4) return `<div class="compare-search-prompt limit"><strong>Comparison group full</strong><span>Remove a player before adding another.</span></div>`;
+  if(!state.compareQuery.trim()) return `<div class="compare-search-prompt"><strong>Search ${data.meta.playerCount} players</strong><span>Type a name, team or position to add someone.</span></div>`;
+  const matches = compareSearchMatches(state.compareQuery);
+  if(!matches.length) return `<div class="compare-search-prompt"><strong>No matching players</strong><span>Try another name, team abbreviation or position.</span></div>`;
+  return matches.map(player => `<button class="compare-search-result" data-add-compare="${player.id}">${teamBadge(player.team,true)}<span><strong>${player.name}</strong><small>${player.team} · ${player.pos} · ${player.pts} PPG</small></span><i>＋ ADD</i></button>`).join("");
+}
+
+function bindCompareSearch() {
+  const input = document.querySelector("#compare-search");
+  const results = document.querySelector("#compare-search-results");
+  input.value=state.compareQuery;
+  const bindResults = () => document.querySelectorAll("[data-add-compare]").forEach(button => button.addEventListener("click",() => {
+    if(state.compareIds.length >= 4) return;
+    state.compareIds.push(Number(button.dataset.addCompare));
+    state.compareQuery="";
+    renderCompare();
+    setTimeout(() => document.querySelector("#compare-search")?.focus(),0);
+  }));
+  input.addEventListener("input",event => {
+    state.compareQuery=event.target.value;
+    results.innerHTML=compareSearchResults();
+    bindResults();
+  });
+  input.addEventListener("keydown",event => {
+    if(event.key === "Enter") {
+      event.preventDefault();
+      document.querySelector("[data-add-compare]")?.click();
+    }
+    if(event.key === "Escape") {
+      state.compareQuery="";
+      input.value="";
+      results.innerHTML=compareSearchResults();
+    }
+  });
+  bindResults();
+  document.querySelectorAll("[data-remove-compare]").forEach(button => button.addEventListener("click",() => {
+    state.compareIds=state.compareIds.filter(id => id !== Number(button.dataset.removeCompare));
+    renderCompare();
+    setTimeout(() => document.querySelector("#compare-search")?.focus(),0);
+  }));
+}
+
 function renderCompare() {
   const selected = state.compareIds.map(playerById).filter(Boolean);
   const metrics = [["Points","pts",35],["Rebounds","reb",15],["Assists","ast",11],["Steals","stl",2.5],["Blocks","blk",2],["True shooting","ts",70]];
-  const picker = `<section class="panel compare-picker"><div class="chip-grid">${data.players.map(player => `<label class="player-chip ${state.compareIds.includes(player.id)?"selected":""}"><input type="checkbox" value="${player.id}" ${state.compareIds.includes(player.id)?"checked":""}><span>${player.name}<small>${player.team} · ${player.pos}</small></span></label>`).join("")}</div></section>`;
+  const picker = `<section class="panel compare-picker"><div class="compare-picker-head"><div><span class="eyebrow">COMPARISON GROUP</span><h2>Players selected</h2></div><span>${selected.length} OF 4</span></div><div class="compare-selected">${selected.map(player => `<div class="compare-selected-player">${teamBadge(player.team,true)}<span><strong>${player.name}</strong><small>${player.team} · ${player.pos}</small></span><button data-remove-compare="${player.id}" aria-label="Remove ${player.name} from comparison">×</button></div>`).join("")}${Array.from({length:Math.max(0,2-selected.length)},() => `<div class="compare-slot"><span>＋</span><small>ADD PLAYER</small></div>`).join("")}</div><div class="compare-search"><label for="compare-search">ADD ANOTHER PLAYER</label><div><span>⌕</span><input id="compare-search" placeholder="Search by player, team or position" autocomplete="off" ${selected.length >= 4?"disabled":""}><kbd>ENTER</kbd></div><div class="compare-search-results" id="compare-search-results" aria-live="polite">${compareSearchResults()}</div></div></section>`;
   const radar = `<section class="panel comparison-output"><div class="panel-heading"><div><span class="eyebrow">PLAYER SHAPE</span><h2>Multi-metric radar</h2></div><span class="method-chip">PER GAME · NORMALIZED</span></div>${buildRadarChart(selected,metrics)}<div class="radar-table-wrap"><table class="radar-table"><thead><tr><th>Metric</th>${selected.map(player => `<th>${player.name}</th>`).join("")}</tr></thead><tbody>${metrics.map(([label,key]) => `<tr><td>${label}</td>${selected.map(player => `<td>${player[key]}${key === "ts"?"%":""}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`;
   const cards = `<section class="comparison-grid comparison-summaries">${selected.map((player,index) => `<article class="comparison-card"><span class="compare-number">0${index+1}</span>${teamBadge(player.team)}<div><span class="eyebrow">${player.team} · ${player.pos}</span><h3>${player.name}</h3><strong>${player.pts}<small> PPG</small></strong><p>${player.reb} REB · ${player.ast} AST · ${player.ts}% TS</p></div></article>`).join("")}</section>`;
-  root.innerHTML = `<section class="compare-header"><div><h2>Build your comparison group</h2><p>Select two to four players. The radar updates instantly.</p></div><span>${selected.length}/4 SELECTED</span></section>${picker}${selected.length ? `${radar}${cards}` : emptyState("Select at least two players to begin.")}`;
-  document.querySelectorAll(".player-chip input").forEach(input => input.addEventListener("change",() => { const id=Number(input.value); if(input.checked && state.compareIds.length<4) state.compareIds.push(id); else if(!input.checked) state.compareIds=state.compareIds.filter(value => value!==id); renderCompare(); }));
+  root.innerHTML = `<section class="compare-header"><div><h2>Build your comparison group</h2><p>Search and add two to four players. The radar updates instantly.</p></div><span>${selected.length}/4 SELECTED</span></section>${picker}${selected.length >= 2 ? `${radar}${cards}` : emptyState("Add at least two players to begin the comparison.")}`;
+  bindCompareSearch();
   document.querySelectorAll(".radar-legend [data-player-jump]").forEach(button => button.addEventListener("click",() => { state.selectedPlayer=Number(button.dataset.playerJump); location.hash="players"; }));
 }
 
