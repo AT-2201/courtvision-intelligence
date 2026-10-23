@@ -142,11 +142,40 @@ function filterScoutPlayers() {
   document.querySelectorAll("[data-scout-player]").forEach(button => { const player=playerById(button.dataset.scoutPlayer); button.hidden=!player.name.toLowerCase().includes(query) || (position !== "All positions" && family(player.pos) !== position); });
 }
 
+function buildRadarChart(selected,metrics) {
+  const center = 180;
+  const radius = 116;
+  const colors = ["#ff6846","#76a5ff","#c9ff4a","#b58cff"];
+  const point = (index,scale=1) => {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index / metrics.length);
+    return [center + Math.cos(angle) * radius * scale,center + Math.sin(angle) * radius * scale];
+  };
+  const polygon = scale => metrics.map((_,index) => point(index,scale).map(value => value.toFixed(1)).join(",")).join(" ");
+  const playerPolygon = player => metrics.map(([,key,max],index) => point(index,Math.min(1,player[key]/max)).map(value => value.toFixed(1)).join(",")).join(" ");
+  const labelPoint = index => point(index,1.23);
+  return `<div class="radar-layout">
+    <div class="radar-chart-wrap">
+      <svg class="radar-chart" viewBox="0 0 360 360" role="img" aria-label="Radar chart comparing ${selected.map(player => player.name).join(", ")}">
+        ${[.25,.5,.75,1].map(scale => `<polygon class="radar-grid" points="${polygon(scale)}"></polygon>`).join("")}
+        ${metrics.map((_,index) => { const [x,y]=point(index); return `<line class="radar-axis" x1="${center}" y1="${center}" x2="${x}" y2="${y}"></line>`; }).join("")}
+        ${selected.map((player,index) => `<polygon class="radar-player" style="--radar-color:${colors[index]}" points="${playerPolygon(player)}"></polygon>${metrics.map(([,key,max],metricIndex) => { const [x,y]=point(metricIndex,Math.min(1,player[key]/max)); return `<circle class="radar-point" style="--radar-color:${colors[index]}" cx="${x}" cy="${y}" r="3"></circle>`; }).join("")}`).join("")}
+        ${metrics.map(([label],index) => { const [x,y]=labelPoint(index); const anchor=x<center-5?"end":x>center+5?"start":"middle"; return `<text class="radar-label" x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle">${label}</text>`; }).join("")}
+      </svg>
+      <div class="radar-scale"><span>Normalized to the comparison scale</span><strong>Shape shows profile · size shows output</strong></div>
+    </div>
+    <div class="radar-legend">${selected.map((player,index) => `<button data-player-jump="${player.id}" style="--radar-color:${colors[index]}"><i></i><span><strong>${player.name}</strong><small>${player.team} · ${player.pos}</small></span></button>`).join("")}</div>
+  </div>`;
+}
+
 function renderCompare() {
   const selected = state.compareIds.map(playerById).filter(Boolean);
   const metrics = [["Points","pts",35],["Rebounds","reb",15],["Assists","ast",11],["Steals","stl",2.5],["Blocks","blk",2],["True shooting","ts",70]];
-  root.innerHTML = `<section class="compare-header"><div><h2>Build your comparison group</h2><p>Select two to four players. The view updates instantly.</p></div><span>${selected.length}/4 SELECTED</span></section><section class="panel compare-picker"><div class="chip-grid">${data.players.map(player => `<label class="player-chip ${state.compareIds.includes(player.id)?"selected":""}"><input type="checkbox" value="${player.id}" ${state.compareIds.includes(player.id)?"checked":""}><span>${player.name}<small>${player.team} · ${player.pos}</small></span></label>`).join("")}</div></section>${selected.length ? `<section class="comparison-grid">${selected.map((player,index) => `<article class="comparison-card"><span class="compare-number">0${index+1}</span>${teamBadge(player.team)}<div><span class="eyebrow">${player.team} · ${player.pos}</span><h3>${player.name}</h3><strong>${player.pts}<small> PPG</small></strong><p>${player.reb} REB · ${player.ast} AST · ${player.ts}% TS</p></div></article>`).join("")}</section><section class="panel comparison-output"><div class="panel-heading"><div><span class="eyebrow">NORMAL SEASON STATS</span><h2>Stat profile</h2></div><span class="method-chip">PER GAME</span></div><div class="compare-bars">${metrics.map(([label,key,max]) => `<div class="compare-metric"><strong>${label}</strong><div>${selected.map((player,index) => `<span><i style="width:${Math.max(4,player[key]/max*100)}%;--bar-index:${index}"></i><small>${player.name.split(" ").pop()}</small><b>${player[key]}${key === "ts"?"%":""}</b></span>`).join("")}</div></div>`).join("")}</div></section>` : emptyState("Select at least two players to begin.")}`;
+  const picker = `<section class="panel compare-picker"><div class="chip-grid">${data.players.map(player => `<label class="player-chip ${state.compareIds.includes(player.id)?"selected":""}"><input type="checkbox" value="${player.id}" ${state.compareIds.includes(player.id)?"checked":""}><span>${player.name}<small>${player.team} · ${player.pos}</small></span></label>`).join("")}</div></section>`;
+  const radar = `<section class="panel comparison-output"><div class="panel-heading"><div><span class="eyebrow">PLAYER SHAPE</span><h2>Multi-metric radar</h2></div><span class="method-chip">PER GAME · NORMALIZED</span></div>${buildRadarChart(selected,metrics)}<div class="radar-table-wrap"><table class="radar-table"><thead><tr><th>Metric</th>${selected.map(player => `<th>${player.name}</th>`).join("")}</tr></thead><tbody>${metrics.map(([label,key]) => `<tr><td>${label}</td>${selected.map(player => `<td>${player[key]}${key === "ts"?"%":""}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>`;
+  const cards = `<section class="comparison-grid comparison-summaries">${selected.map((player,index) => `<article class="comparison-card"><span class="compare-number">0${index+1}</span>${teamBadge(player.team)}<div><span class="eyebrow">${player.team} · ${player.pos}</span><h3>${player.name}</h3><strong>${player.pts}<small> PPG</small></strong><p>${player.reb} REB · ${player.ast} AST · ${player.ts}% TS</p></div></article>`).join("")}</section>`;
+  root.innerHTML = `<section class="compare-header"><div><h2>Build your comparison group</h2><p>Select two to four players. The radar updates instantly.</p></div><span>${selected.length}/4 SELECTED</span></section>${picker}${selected.length ? `${radar}${cards}` : emptyState("Select at least two players to begin.")}`;
   document.querySelectorAll(".player-chip input").forEach(input => input.addEventListener("change",() => { const id=Number(input.value); if(input.checked && state.compareIds.length<4) state.compareIds.push(id); else if(!input.checked) state.compareIds=state.compareIds.filter(value => value!==id); renderCompare(); }));
+  document.querySelectorAll(".radar-legend [data-player-jump]").forEach(button => button.addEventListener("click",() => { state.selectedPlayer=Number(button.dataset.playerJump); location.hash="players"; }));
 }
 
 function bindListSearch(inputSelector,itemSelector) {
