@@ -6,7 +6,7 @@
     <meta name="description" content="CourtVision Intelligence — basketball analytics and scouting portfolio platform.">
     <title>CourtVision Intelligence</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="assets/styles.css?v=1">
+    <link rel="stylesheet" href="assets/styles.css?v=2">
   </head>
   <body>
     <div class="app-shell">
@@ -17,25 +17,34 @@
         </a>
         <nav id="primary-nav" aria-label="Primary navigation"></nav>
         <div class="source-card">
-          <span class="eyebrow">DATA SOURCE</span>
-          <strong>Kaggle NBA Database</strong>
-          <span>2023/24 sample preview</span>
-          <span>CC BY-SA 4.0</span>
+          <span class="source-status"><i></i> DATA CONNECTED</span>
+          <strong>2023/24 season</strong>
+          <span>Kaggle NBA Database · demo subset</span>
         </div>
       </aside>
       <main>
         <header class="topbar">
           <div>
             <span class="eyebrow" id="page-kicker">LEAGUE INTELLIGENCE</span>
-            <h1 id="page-title">Season command center</h1>
+            <h1 id="page-title">League pulse</h1>
           </div>
-          <div class="season-badge"><span></span> 2023/24 · SAMPLE</div>
+          <div class="top-actions">
+            <button class="command-button" id="command-button" aria-label="Open quick navigation"><span>⌕</span> Quick find <kbd>/</kbd></button>
+            <div class="season-badge"><span></span> 2023/24</div>
+          </div>
         </header>
         <div id="page-root" class="page-root" aria-live="polite"></div>
       </main>
     </div>
-    <script src="assets/data.js?v=1"></script>
-    <script src="assets/app.js?v=1"></script>
+    <div class="command-palette" id="command-palette" hidden>
+      <button class="palette-backdrop" data-close-palette aria-label="Close quick navigation"></button>
+      <div class="palette-dialog" role="dialog" aria-modal="true" aria-label="Quick navigation">
+        <div class="palette-search"><span>⌕</span><input id="palette-input" placeholder="Search a page, player or team…" autocomplete="off"><kbd>ESC</kbd></div>
+        <div id="palette-results" class="palette-results"></div>
+      </div>
+    </div>
+    <script src="assets/data.js?v=2"></script>
+    <script src="assets/app.js?v=2"></script>
   </body>
 </html>
 
