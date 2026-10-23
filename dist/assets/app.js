@@ -10,8 +10,7 @@ const pages = [
   {id:"teams", label:"Teams", title:"Team lab", kicker:"IDENTITY / PERFORMANCE", icon:"◎"},
   {id:"players", label:"Players", title:"Player lab", kicker:"PRODUCTION / EFFICIENCY", icon:"◉"},
   {id:"scouting", label:"Scout", title:"Similarity finder", kicker:"PLAYER DISCOVERY", icon:"⌁"},
-  {id:"compare", label:"Compare", title:"Comparison room", kicker:"SIDE-BY-SIDE ANALYSIS", icon:"⇄"},
-  {id:"pipeline", label:"Pipeline", title:"Data platform", kicker:"ENGINEERING / ANALYTICS", icon:"⌘"}
+  {id:"compare", label:"Compare", title:"Comparison room", kicker:"SIDE-BY-SIDE ANALYSIS", icon:"⇄"}
 ];
 
 const playerIdFor = name => data.players.find(player => player.name === name)?.id;
@@ -236,39 +235,12 @@ function renderCompare() {
   document.querySelectorAll(".radar-legend [data-player-jump]").forEach(button => button.addEventListener("click",() => { state.selectedPlayer=Number(button.dataset.playerJump); location.hash="players"; }));
 }
 
-function renderPipeline() {
-  const apiConnected = document.body.dataset.dataMode === "api";
-  const layers = [
-    ["01","SOURCE","Public season CSVs","Games, team box scores and player box scores"],
-    ["02","INGEST","Python normalization","Typed records, season filters and idempotent PostgreSQL upserts"],
-    ["03","MODEL","dbt transformations","Staging views, dimensional joins, rolling form and season marts"],
-    ["04","SERVE","FastAPI analytics","Filtered resources, pagination, similarity and quality endpoints"],
-    ["05","EXPERIENCE","Decision interface","League, team, player, scouting and comparison workspaces"]
-  ];
-  const endpoints = [
-    ["GET","/api/v1/summary","League leaders and season signals"],
-    ["GET","/api/v1/players","Search, filter, sort and paginate players"],
-    ["GET","/api/v1/players/{id}/similar","Explainable player similarity"],
-    ["GET","/api/v1/games","Team and date-filtered game results"],
-    ["GET","/api/v1/data-quality","Machine-readable validation report"],
-    ["GET","/docs","Interactive OpenAPI documentation"]
-  ];
-  const checks = [
-    ["Franchise coverage","30 / 30","passed"],
-    ["Regular-season games","1,230 unique","passed"],
-    ["Schedule completeness","82 per team","passed"],
-    ["Player identity","572 unique IDs","passed"],
-    ["Season date range","Oct 24 → Apr 14","passed"]
-  ];
-  root.innerHTML = `<section class="pipeline-hero"><div><span class="eyebrow">END-TO-END DATA PRODUCT</span><h2>From public box scores to decision-ready analytics.</h2><p>The dashboard is backed by a reproducible warehouse workflow: streamed source ingestion, PostgreSQL raw tables, dbt-style analytical marts and a documented FastAPI serving layer.</p></div><div class="runtime-card"><span class="runtime-dot ${apiConnected?"live":"snapshot"}"></span><div><small>CURRENT RUNTIME</small><strong>${apiConnected?"FASTAPI CONNECTED":"VERIFIED STATIC MART"}</strong><p>${apiConnected?"The interface loaded its dataset from /api/v1/bootstrap.":"The hosted portfolio uses the same validated mart as the API fallback."}</p></div></div></section><section class="pipeline-stats">${metricCard("Source rows","1,230","games")}${metricCard("Player profiles",data.meta.playerCount,"modeled")}${metricCard("REST routes","12","documented")}${metricCard("Quality checks","5 / 5","passing","positive")}</section><section class="panel pipeline-lineage"><div class="panel-heading"><div><span class="eyebrow">DATA LINEAGE</span><h2>One traceable analytical path</h2></div><span class="method-chip">BATCH · IDEMPOTENT · TESTED</span></div><div class="lineage-flow">${layers.map(([index,label,name,detail]) => `<article><span>${index}</span><small>${label}</small><strong>${name}</strong><p>${detail}</p></article>`).join("")}</div></section><section class="pipeline-grid"><article class="panel quality-panel"><div class="panel-heading"><div><span class="eyebrow">DATA QUALITY</span><h2>Release gates</h2></div><span class="quality-status">ALL PASSING</span></div><div class="quality-list">${checks.map(([name,value]) => `<div><i>✓</i><span><strong>${name}</strong><small>${value}</small></span></div>`).join("")}</div></article><article class="panel api-panel"><div class="panel-heading"><div><span class="eyebrow">SERVING LAYER</span><h2>FastAPI endpoint catalog</h2></div><span class="method-chip">OPENAPI</span></div><div class="endpoint-list">${endpoints.map(([method,path,detail]) => `<div><b>${method}</b><code>${path}</code><span>${detail}</span></div>`).join("")}</div></article></section><section class="panel engineering-notes"><div><span class="eyebrow">ENGINEERING DECISIONS</span><h2>Built for repeatability, not a one-off notebook</h2></div><div class="decision-grid"><article><strong>Idempotent loading</strong><p>PostgreSQL conflict keys allow safe reruns without duplicating games or box scores.</p></article><article><strong>Separated concerns</strong><p>Raw ingestion, transformations, analytics logic, API delivery and UI presentation remain modular.</p></article><article><strong>Portable serving</strong><p>The interface prefers FastAPI when available and falls back to the exact generated mart for static hosting.</p></article></div></section>`;
-}
-
 function bindListSearch(inputSelector,itemSelector) {
   document.querySelector(inputSelector).addEventListener("input",event => { const query=event.target.value.toLowerCase(); document.querySelectorAll(itemSelector).forEach(button => { button.hidden=!button.textContent.toLowerCase().includes(query); }); });
 }
 function bindPageLinks() { document.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click",() => { location.hash=button.dataset.go; })); }
 
-const renderers = {overview:renderOverview,games:renderGames,teams:renderTeams,players:renderPlayers,scouting:renderScouting,compare:renderCompare,pipeline:renderPipeline};
+const renderers = {overview:renderOverview,games:renderGames,teams:renderTeams,players:renderPlayers,scouting:renderScouting,compare:renderCompare};
 function renderPage() {
   const pageId = location.hash.replace("#","") || "overview";
   const active = pages.find(page => page.id === pageId) || pages[0];
