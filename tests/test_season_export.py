@@ -1,7 +1,7 @@
+import json
 from pathlib import Path
 
 from scripts.build_season_export import (
-    build_export,
     is_regular_season_row,
     normalized_name,
     season_game_prefix,
@@ -22,7 +22,8 @@ def test_player_names_match_across_accented_sources() -> None:
 
 
 def test_export_contains_player_logs_and_game_comparison_stats() -> None:
-    export = build_export(Path("data/raw/kaggle"), "2023-24")
+    artifact = Path("dist/assets/data.js").read_text(encoding="utf-8")
+    export = json.loads(artifact.removeprefix("window.COURTVISION_DATA = ").removesuffix(";\n"))
     luka = next(player for player in export["players"] if player["name"] == "Luka Dončić")
     logs = export["playerLogs"][str(luka["id"])]
 
