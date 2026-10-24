@@ -105,6 +105,14 @@ def player_similarity(
     return {"player_id": player_id, "items": matches, "total": len(matches)}
 
 
+@router.get("/api/v1/players/{player_id}/games")
+def player_games(player_id: int, limit: int = Query(default=20, ge=1, le=82)) -> dict[str, object]:
+    result = repository.player_games(player_id, limit=limit)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return {"player_id": player_id, **result}
+
+
 @router.get("/api/v1/games")
 def games(
     team: str | None = None,

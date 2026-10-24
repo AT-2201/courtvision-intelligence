@@ -105,9 +105,7 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
             if is_regular_season_row(row, prefix):
                 team_rows_by_game[row["gameId"]][integer(row["teamId"])] = row
 
-    team_totals = {
-        team_id: defaultdict(float, {"games": 0}) for team_id in TEAM_META
-    }
+    team_totals = {team_id: defaultdict(float, {"games": 0}) for team_id in TEAM_META}
     for rows in team_rows_by_game.values():
         if len(rows) != 2:
             continue
@@ -165,11 +163,35 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
         home_score = integer(row["homeScore"])
         away_score = integer(row["awayScore"])
         winner_name = home_name if home_score > away_score else away_name
-        home_stats = team_rows_by_game.get(row["gameId"], {}).get(home_id, {})
-        quarters = [integer(home_stats.get(f"q{quarter}Points")) for quarter in range(1, 5)]
-        overtime = integer(home_stats.get("otAllPoints"))
-        if overtime:
-            quarters.append(overtime)
+        game_team_rows = team_rows_by_game.get(row["gameId"], {})
+        home_stats = game_team_rows.get(home_id, {})
+        away_stats = game_team_rows.get(away_id, {})
+
+        def period_scores(stats: dict[str, str]) -> list[int]:
+            periods = [integer(stats.get(f"q{quarter}Points")) for quarter in range(1, 5)]
+            overtime = integer(stats.get("otAllPoints"))
+            if overtime:
+                periods.append(overtime)
+            return periods
+
+        def team_game_summary(stats: dict[str, str]) -> dict[str, int | float]:
+            return {
+                "fgPct": round(number(stats.get("fieldGoalsPercentage")) * 100, 1),
+                "threePct": round(number(stats.get("threePointersPercentage")) * 100, 1),
+                "ftPct": round(number(stats.get("freeThrowsPercentage")) * 100, 1),
+                "reb": integer(stats.get("reboundsTotal")),
+                "ast": integer(stats.get("assists")),
+                "tov": integer(stats.get("turnovers")),
+                "stl": integer(stats.get("steals")),
+                "blk": integer(stats.get("blocks")),
+                "paint": integer(stats.get("pointsInThePaint")),
+                "fastBreak": integer(stats.get("pointsFastBreak")),
+                "biggestLead": integer(stats.get("biggestLead")),
+                "leadChanges": integer(stats.get("leadChanges")),
+            }
+
+        home_quarters = period_scores(home_stats)
+        away_quarters = period_scores(away_stats)
         games.append(
             {
                 "id": row["gameId"],
@@ -178,13 +200,18 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
                 "home": home_abbr,
                 "awayScore": away_score,
                 "homeScore": home_score,
-                "quarters": quarters,
+                "quarters": home_quarters,
+                "homeQuarters": home_quarters,
+                "awayQuarters": away_quarters,
+                "homeStats": team_game_summary(home_stats),
+                "awayStats": team_game_summary(away_stats),
                 "note": f"{winner_name} won by {abs(home_score - away_score)} points.",
             }
         )
     games.sort(key=lambda game: (game["date"], game["id"]), reverse=True)
 
     player_lookup: dict[str, dict[str, object]] = {}
+    player_logs: dict[int, list[dict[str, object]]] = defaultdict(list)
     with (input_dir / "PlayerStatistics.csv").open(newline="", encoding="utf-8-sig") as handle:
         for row in csv.DictReader(handle):
             if not is_regular_season_row(row, prefix):
@@ -205,6 +232,33 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
             )
             if minutes > 0:
                 totals["team_minutes"][team_id] += minutes
+                opponent_id = integer(row["opponentteamId"])
+                opponent = TEAM_META.get(opponent_id, ("UNK", "Unknown", ""))[0]
+                player_logs[player_id].append(
+                    {
+                        "gameId": row["gameId"],
+                        "date": row["gameDate"][:10],
+                        "team": TEAM_META[team_id][0],
+                        "opp": opponent,
+                        "home": bool(integer(row["home"])),
+                        "win": bool(integer(row["win"])),
+                        "started": bool(row.get("startingPosition")),
+                        "min": round(minutes, 1),
+                        "pts": integer(row["points"]),
+                        "reb": integer(row["reboundsTotal"]),
+                        "ast": integer(row["assists"]),
+                        "stl": integer(row["steals"]),
+                        "blk": integer(row["blocks"]),
+                        "tov": integer(row["turnovers"]),
+                        "fgm": integer(row["fieldGoalsMade"]),
+                        "fga": integer(row["fieldGoalsAttempted"]),
+                        "tpm": integer(row["threePointersMade"]),
+                        "tpa": integer(row["threePointersAttempted"]),
+                        "ftm": integer(row["freeThrowsMade"]),
+                        "fta": integer(row["freeThrowsAttempted"]),
+                        "plusMinus": integer(row["plusMinusPoints"]),
+                    }
+                )
 
     # Basketball Reference-derived totals provide one verified season row per player.
     # Prefer the aggregate 2TM/3TM row for traded players. The game-level source above
@@ -264,6 +318,12 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
             }
         )
     players.sort(key=lambda player: (-player["totalMin"], player["name"]))
+    exported_player_ids = {player["id"] for player in players}
+    exported_logs = {
+        str(player_id): sorted(logs, key=lambda item: (item["date"], item["gameId"]), reverse=True)
+        for player_id, logs in player_logs.items()
+        if player_id in exported_player_ids
+    }
 
     return {
         "meta": {
@@ -272,6 +332,7 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
             "teamCount": len(teams),
             "gameCount": len(games),
             "playerCount": len(players),
+            "playerGameCount": sum(len(logs) for logs in exported_logs.values()),
             "source": "Eoin Moore + Sumitro Datta · Kaggle",
             "license": "CC0 1.0",
             "seasonEnd": str(date(2024, 4, 14)),
@@ -279,6 +340,7 @@ def build_export(input_dir: Path, season: str) -> dict[str, object]:
         "teams": teams,
         "players": players,
         "games": games,
+        "playerLogs": exported_logs,
     }
 
 
@@ -295,9 +357,7 @@ def main() -> None:
             f"Expected 1,230 regular-season games, found {export['meta']['gameCount']:,}."
         )
     invalid_teams = [
-        team["abbr"]
-        for team in export["teams"]
-        if team["wins"] + team["losses"] != 82
+        team["abbr"] for team in export["teams"] if team["wins"] + team["losses"] != 82
     ]
     if invalid_teams:
         raise SystemExit(f"Expected 82 games for every team; invalid: {invalid_teams}")

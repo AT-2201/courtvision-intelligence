@@ -15,13 +15,21 @@ const pages = [
 
 const playerIdFor = name => data.players.find(player => player.name === name)?.id;
 const featuredPlayerIds = ["Nikola Jokić","Luka Dončić","Shai Gilgeous-Alexander"].map(playerIdFor).filter(Boolean);
-const state = {selectedPlayer:playerIdFor("Luka Dončić") || data.players[0].id, selectedGame:data.games[0].id, selectedTeam:data.teams[0].abbr, compareIds:featuredPlayerIds, compareQuery:"", conference:"All", leaderMetric:"pts"};
+const state = {selectedPlayer:playerIdFor("Luka Dončić") || data.players[0].id, selectedGame:data.games[0].id, selectedTeam:data.teams[0].abbr, compareIds:featuredPlayerIds, compareQuery:"", conference:"All", leaderMetric:"pts", gameTeam:"All", gameMargin:"All", playerLogRange:10};
 const fmt = (value, digits = 1) => Number(value).toFixed(digits);
 const signed = value => `${value > 0 ? "+" : ""}${fmt(value)}`;
 const playerById = id => data.players.find(player => player.id === Number(id));
 const teamByAbbr = abbr => data.teams.find(team => team.abbr === abbr);
 const family = pos => pos.includes("G") && !pos.includes("F") ? "Guard" : pos === "C" ? "Center" : "Wing / Forward";
 const netRating = team => team.ortg - team.drtg;
+const average = (rows,key) => rows.length ? rows.reduce((sum,row) => sum + Number(row[key] || 0),0) / rows.length : 0;
+const playerLogs = player => data.playerLogs?.[String(player.id)] || [];
+
+function trueShooting(rows) {
+  const points=rows.reduce((sum,row) => sum + row.pts,0);
+  const attempts=rows.reduce((sum,row) => sum + row.fga + .44 * row.fta,0);
+  return attempts ? points / (2 * attempts) * 100 : 0;
+}
 
 function teamBadge(abbr, small = false) {
   const hues = {BOS:145,OKC:205,DEN:43,MIN:207,LAC:222,NYK:24,DAL:199,MIL:151,CLE:350,ORL:220,PHX:284,GSW:44,LAL:276,SAC:268};
@@ -97,10 +105,32 @@ function bindOverview() {
 }
 
 function renderGames() {
-  const game = data.games.find(item => item.id === state.selectedGame) || data.games[0];
-  const maxQuarter = Math.max(...game.quarters);
-  root.innerHTML = `<section class="workspace-toolbar"><div class="search-field"><span>⌕</span><input aria-label="Search games" placeholder="Search a team or date" id="game-search"></div><span class="result-count">${data.games.length} GAMES</span></section><section class="split-workspace"><div class="list-panel"><div class="list-label"><span>DATE / MATCHUP</span><span>FINAL</span></div><div class="scroll-list">${data.games.map(item => `<button class="list-row game-row ${item.id === game.id ? "active" : ""}" data-game="${item.id}"><span><small>${item.date}</small><strong>${item.away} at ${item.home}</strong></span><span class="score">${item.awayScore}<em>:</em>${item.homeScore}</span></button>`).join("")}</div></div><article class="detail-panel game-detail"><div class="detail-meta"><span class="status-pill">FINAL</span><span>${game.date}</span></div><div class="scoreboard"><div>${teamBadge(game.away)}<span><strong>${game.away}</strong><small>AWAY</small></span><b>${game.awayScore}</b></div><span>—</span><div><b>${game.homeScore}</b><span><strong>${game.home}</strong><small>HOME</small></span>${teamBadge(game.home)}</div></div><div class="section-heading"><span class="eyebrow">SCORING RHYTHM</span><h2>Quarter-by-quarter output</h2></div><div class="quarter-chart">${game.quarters.map((quarter,index) => `<div><strong>${quarter}</strong><i style="height:${Math.max(14,quarter/maxQuarter*100)}%"></i><span>${index === 4 ? "OT" : `Q${index+1}`}</span></div>`).join("")}</div><div class="analyst-note"><span>READ</span><p>${game.note}</p></div></article></section>`;
+  const filteredGames = data.games.filter(item => {
+    const teamMatch=state.gameTeam === "All" || [item.away,item.home].includes(state.gameTeam);
+    const margin=Math.abs(item.homeScore-item.awayScore);
+    const marginMatch=state.gameMargin === "All" || (state.gameMargin === "Close" ? margin <= 5 : margin >= 15);
+    return teamMatch && marginMatch;
+  });
+  const game = filteredGames.find(item => item.id === state.selectedGame) || filteredGames[0] || data.games[0];
+  state.selectedGame=game.id;
+  const periods=Math.max(game.awayQuarters.length,game.homeQuarters.length);
+  const periodLabels=Array.from({length:periods},(_,index) => index < 4 ? `Q${index+1}` : `OT${index === 4 ? "" : index-3}`);
+  const comparisons=[
+    ["Field goal %",game.awayStats.fgPct,game.homeStats.fgPct,"%"],
+    ["Three-point %",game.awayStats.threePct,game.homeStats.threePct,"%"],
+    ["Rebounds",game.awayStats.reb,game.homeStats.reb,""],
+    ["Assists",game.awayStats.ast,game.homeStats.ast,""],
+    ["Turnovers",game.awayStats.tov,game.homeStats.tov,""]
+  ];
+  const winner=game.awayScore > game.homeScore ? game.away : game.home;
+  const margin=Math.abs(game.homeScore-game.awayScore);
+  const winnerStats=winner === game.away ? game.awayStats : game.homeStats;
+  const loserStats=winner === game.away ? game.homeStats : game.awayStats;
+  const assistRead=winnerStats.ast === loserStats.ast ? "The teams finished level in assists." : winnerStats.ast > loserStats.ast ? `${winner} also held the assist advantage.` : `The losing side recorded ${loserStats.ast-winnerStats.ast} more assists.`;
+  root.innerHTML = `<section class="game-toolbar"><div class="search-field"><span>⌕</span><input aria-label="Search games" placeholder="Search a team, matchup or date" id="game-search"></div><select id="game-team" aria-label="Filter games by team"><option value="All">All teams</option>${data.teams.map(team => `<option value="${team.abbr}" ${state.gameTeam === team.abbr ? "selected" : ""}>${team.name}</option>`).join("")}</select><select id="game-margin" aria-label="Filter games by margin"><option value="All" ${state.gameMargin === "All" ? "selected" : ""}>All results</option><option value="Close" ${state.gameMargin === "Close" ? "selected" : ""}>Close games · ≤5</option><option value="Decisive" ${state.gameMargin === "Decisive" ? "selected" : ""}>Decisive · 15+</option></select><span class="result-count">${filteredGames.length} GAMES</span></section><section class="split-workspace game-center"><div class="list-panel"><div class="list-label"><span>DATE / MATCHUP</span><span>FINAL</span></div><div class="scroll-list">${filteredGames.map(item => { const itemWinner=item.awayScore>item.homeScore?item.away:item.home; return `<button class="list-row game-row ${item.id === game.id ? "active" : ""}" data-game="${item.id}"><span><small>${item.date}</small><strong>${item.away} at ${item.home}</strong><em>${itemWinner} · ${Math.abs(item.awayScore-item.homeScore)} PTS</em></span><span class="score">${item.awayScore}<i>:</i>${item.homeScore}</span></button>`; }).join("") || emptyState("No games match these filters.")}</div></div><article class="detail-panel game-detail"><div class="detail-meta"><span class="status-pill">FINAL</span><span>${game.date}</span><strong>${winner} · ${margin}-POINT WIN</strong></div><div class="scoreboard"><div>${teamBadge(game.away)}<span><strong>${game.away}</strong><small>AWAY</small></span><b class="${winner === game.away ? "winner" : ""}">${game.awayScore}</b></div><span>—</span><div><b class="${winner === game.home ? "winner" : ""}">${game.homeScore}</b><span><strong>${game.home}</strong><small>HOME</small></span>${teamBadge(game.home)}</div></div><section class="game-context"><div><small>MARGIN</small><strong>${margin}</strong><span>points</span></div><div><small>LEAD CHANGES</small><strong>${Math.max(game.awayStats.leadChanges,game.homeStats.leadChanges)}</strong><span>swings</span></div><div><small>BIGGEST LEAD</small><strong>${Math.max(game.awayStats.biggestLead,game.homeStats.biggestLead)}</strong><span>points</span></div><div><small>PAINT EDGE</small><strong>${Math.abs(game.awayStats.paint-game.homeStats.paint)}</strong><span>${game.awayStats.paint === game.homeStats.paint ? "even" : (game.awayStats.paint > game.homeStats.paint ? game.away : game.home)}</span></div></section><div class="section-heading"><span class="eyebrow">LINE SCORE</span><h2>How the game unfolded</h2></div><div class="line-score"><div class="line-score-head"><span>TEAM</span>${periodLabels.map(label => `<b>${label}</b>`).join("")}<strong>T</strong></div>${[[game.away,game.awayQuarters,game.awayScore],[game.home,game.homeQuarters,game.homeScore]].map(([team,quarters,total]) => `<div><span>${teamBadge(team,true)}<strong>${team}</strong></span>${periodLabels.map((_,index) => `<b>${quarters[index] ?? 0}</b>`).join("")}<strong>${total}</strong></div>`).join("")}</div><div class="section-heading comparison-heading"><span class="eyebrow">TEAM COMPARISON</span><h2>Box-score comparison</h2></div><div class="game-comparison">${comparisons.map(([label,away,home,suffix]) => { const total=Math.max(Number(away)+Number(home),1); return `<div><span><strong>${away}${suffix}</strong><small>${game.away}</small></span><div><i style="width:${away/total*100}%"></i><em style="width:${home/total*100}%"></em></div><b>${label}</b><span><strong>${home}${suffix}</strong><small>${game.home}</small></span></div>`; }).join("")}</div><div class="analyst-note"><span>READ</span><p>${game.note} ${assistRead}</p></div></article></section>`;
   document.querySelectorAll("[data-game]").forEach(button => button.addEventListener("click",() => { state.selectedGame=button.dataset.game; renderGames(); }));
+  document.querySelector("#game-team").addEventListener("change",event => { state.gameTeam=event.target.value; renderGames(); });
+  document.querySelector("#game-margin").addEventListener("change",event => { state.gameMargin=event.target.value; renderGames(); });
   bindListSearch("#game-search","[data-game]");
 }
 
@@ -118,7 +148,20 @@ function playerList(selected,mode="player") {
 
 function renderPlayerDetail(player) {
   const profile = [["Scoring",player.pts,35],["Playmaking",player.ast,11],["Rebounding",player.reb,15],["Efficiency",player.ts,70]];
-  return `<div class="profile-hero"><div class="profile-identity">${teamBadge(player.team)}<div><span class="eyebrow">${player.team} · ${family(player.pos).toUpperCase()}</span><h2>${player.name}</h2><p>${player.games} games · ${player.min} minutes per game</p></div></div><button class="primary-button" data-scout-from-player="${player.id}">Find similar players <span>→</span></button></div><section class="metrics-grid three">${metricCard("Points",player.pts,"per game")}${metricCard("Rebounds",player.reb,"per game")}${metricCard("Assists",player.ast,"per game")}${metricCard("True shooting",`${player.ts}%`,"scoring efficiency")}${metricCard("Steals",player.stl,"per game")}${metricCard("Turnovers",player.tov,"per game")}</section><div class="section-heading"><span class="eyebrow">PLAYER FINGERPRINT</span><h2>Production and efficiency</h2></div><div class="profile-bars">${profile.map(([label,value,max]) => `<div><span><strong>${label}</strong><small>SEASON</small></span><div><i style="width:${Math.min(100,value/max*100)}%"></i></div><b>${fmt(value)}</b></div>`).join("")}</div>`;
+  const logs=playerLogs(player);
+  const lastFive=logs.slice(0,5);
+  const previousFive=logs.slice(5,10);
+  const lastTen=logs.slice(0,10);
+  const lastFivePts=average(lastFive,"pts");
+  const previousPts=average(previousFive,"pts");
+  const scoringDelta=lastFivePts-previousPts;
+  const direction=Math.abs(scoringDelta)<1 ? "STEADY" : scoringDelta > 0 ? "TRENDING UP" : "COOLING";
+  const directionClass=Math.abs(scoringDelta)<1 ? "steady" : scoringDelta > 0 ? "up" : "down";
+  const formMax=Math.max(...lastTen.map(log => log.pts),1);
+  const formChart=[...lastTen].reverse().map(log => `<button data-log-game="${log.gameId}" title="${log.date} vs ${log.opp}: ${log.pts} points"><strong>${log.pts}</strong><i style="height:${Math.max(9,log.pts/formMax*100)}%"></i><span>${log.opp}</span></button>`).join("");
+  const displayedLogs=logs.slice(0,state.playerLogRange);
+  const wins=lastFive.filter(log => log.win).length;
+  return `<div class="profile-hero"><div class="profile-identity">${teamBadge(player.team)}<div><span class="eyebrow">${player.team} · ${family(player.pos).toUpperCase()}</span><h2>${player.name}</h2><p>${player.games} games · ${player.min} minutes per game</p></div></div><button class="primary-button" data-scout-from-player="${player.id}">Find similar players <span>→</span></button></div><section class="metrics-grid three">${metricCard("Points",player.pts,"per game")}${metricCard("Rebounds",player.reb,"per game")}${metricCard("Assists",player.ast,"per game")}${metricCard("True shooting",`${player.ts}%`,"scoring efficiency")}${metricCard("Steals",player.stl,"per game")}${metricCard("Turnovers",player.tov,"per game")}</section>${logs.length ? `<section class="player-form"><div class="section-heading inline"><div><span class="eyebrow">RECENT FORM</span><h2>Last 10 games</h2></div><span class="form-status ${directionClass}">${direction}</span></div><div class="form-layout"><div class="form-summary"><div><small>LAST 5 PPG</small><strong>${fmt(lastFivePts)}</strong><span class="${scoringDelta >= 0 ? "positive" : "negative"}">${scoringDelta >= 0 ? "+" : ""}${fmt(scoringDelta)} vs previous 5</span></div><div><small>LAST 5 RECORD</small><strong>${wins}–${lastFive.length-wins}</strong><span>${fmt(average(lastFive,"plusMinus"))} avg +/-</span></div><div><small>LAST 5 TS%</small><strong>${fmt(trueShooting(lastFive))}%</strong><span>${fmt(average(lastFive,"min"))} min / game</span></div></div><div class="form-chart"><div class="form-chart-axis"><span>${formMax}</span><span>0</span></div>${formChart}</div></div></section>` : emptyState("Game-level form is unavailable for this player.")}<div class="section-heading"><span class="eyebrow">PLAYER FINGERPRINT</span><h2>Production and efficiency</h2></div><div class="profile-bars">${profile.map(([label,value,max]) => `<div><span><strong>${label}</strong><small>SEASON</small></span><div><i style="width:${Math.min(100,value/max*100)}%"></i></div><b>${fmt(value)}</b></div>`).join("")}</div>${logs.length ? `<section class="game-log-section"><div class="section-heading inline"><div><span class="eyebrow">GAME LOG</span><h2>Every performance, one row</h2></div><div class="log-range">${[[10,"10"],[25,"25"],[82,"ALL"]].map(([value,label]) => `<button class="${state.playerLogRange === value ? "active" : ""}" data-log-range="${value}">${label}</button>`).join("")}</div></div><div class="game-log-wrap"><table class="game-log"><thead><tr><th>Date</th><th>Matchup</th><th>Result</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>FG</th><th>3PT</th><th>FT</th><th>+/-</th></tr></thead><tbody>${displayedLogs.map(log => `<tr data-log-game="${log.gameId}" tabindex="0"><td>${log.date.slice(5).replace("-",".")}</td><td><strong>${log.home ? "vs" : "@"} ${log.opp}</strong></td><td><span class="result-chip ${log.win ? "win" : "loss"}">${log.win ? "W" : "L"}</span></td><td>${fmt(log.min)}</td><td><strong>${log.pts}</strong></td><td>${log.reb}</td><td>${log.ast}</td><td>${log.fgm}–${log.fga}</td><td>${log.tpm}–${log.tpa}</td><td>${log.ftm}–${log.fta}</td><td class="${log.plusMinus >= 0 ? "positive" : "negative"}">${log.plusMinus > 0 ? "+" : ""}${log.plusMinus}</td></tr>`).join("")}</tbody></table></div></section>` : ""}`;
 }
 
 function renderPlayers() {
@@ -126,6 +169,12 @@ function renderPlayers() {
   root.innerHTML = `<section class="workspace-toolbar"><div class="search-field"><span>⌕</span><input aria-label="Search players" placeholder="Find a player" id="player-search"></div><div class="toolbar-note">${data.meta.playerCount} players · complete regular season</div></section><section class="split-workspace"><div class="list-panel"><div class="list-label"><span>PLAYER</span><span>SCORING</span></div><div class="scroll-list">${playerList(player.id)}</div></div><article class="detail-panel">${renderPlayerDetail(player)}</article></section>`;
   document.querySelectorAll("[data-player]").forEach(button => button.addEventListener("click",() => { state.selectedPlayer=Number(button.dataset.player); renderPlayers(); }));
   document.querySelector("[data-scout-from-player]").addEventListener("click",() => { location.hash="scouting"; });
+  document.querySelectorAll("[data-log-range]").forEach(button => button.addEventListener("click",() => { state.playerLogRange=Number(button.dataset.logRange); renderPlayers(); }));
+  document.querySelectorAll("[data-log-game]").forEach(row => {
+    const openGame=() => { state.selectedGame=row.dataset.logGame; location.hash="games"; };
+    row.addEventListener("click",openGame);
+    row.addEventListener("keydown",event => { if(event.key === "Enter" || event.key === " ") openGame(); });
+  });
   bindListSearch("#player-search","[data-player]");
 }
 

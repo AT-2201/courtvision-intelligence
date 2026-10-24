@@ -41,6 +41,10 @@ class SeasonMartRepository:
     def games(self) -> list[dict[str, object]]:
         return self.data["games"]  # type: ignore[return-value]
 
+    @property
+    def player_logs(self) -> dict[str, list[dict[str, object]]]:
+        return self.data.get("playerLogs", {})  # type: ignore[return-value]
+
     def bootstrap(self) -> dict[str, object]:
         return self.data
 
@@ -50,6 +54,12 @@ class SeasonMartRepository:
 
     def player(self, player_id: int) -> dict[str, object] | None:
         return next((player for player in self.players if player["id"] == player_id), None)
+
+    def player_games(self, player_id: int, *, limit: int = 82) -> dict[str, object] | None:
+        if self.player(player_id) is None:
+            return None
+        rows = self.player_logs.get(str(player_id), [])
+        return {"items": rows[:limit], "total": len(rows), "limit": limit}
 
     def game(self, game_id: str) -> dict[str, object] | None:
         return next((game for game in self.games if game["id"] == game_id), None)

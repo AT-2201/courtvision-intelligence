@@ -20,6 +20,8 @@ CourtVision Intelligence is an end-to-end basketball analytics and scouting plat
 - League KPIs and standings across all 30 teams
 - Team pace, offensive rating, defensive rating, net rating, and Four Factors
 - Player totals, per-game output, shooting efficiency, and recent form
+- Player form trends with complete game-by-game box-score logs
+- Game Center filtering, line scores, game context, and team box-score comparisons
 - Explainable player similarity based on standardized statistical profiles
 - Search-driven multi-player comparison with radar charts
 - Game, team, player, scouting, and comparison workflows
@@ -120,6 +122,7 @@ The warehouse loader is safe to rerun: records are upserted in configurable batc
 | `GET /api/v1/teams/{abbreviation}` | One team profile |
 | `GET /api/v1/players` | Searchable, filterable player profiles |
 | `GET /api/v1/players/{player_id}` | One player profile |
+| `GET /api/v1/players/{player_id}/games` | Recent player game logs |
 | `GET /api/v1/players/{player_id}/similar` | Explainable similarity results |
 | `GET /api/v1/games` | Paginated games with team filters |
 | `GET /api/v1/games/{game_id}` | One game record |
