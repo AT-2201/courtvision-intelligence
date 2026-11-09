@@ -102,3 +102,21 @@ body[data-page="overview"] .page-heading{display:none}body[data-page="overview"]
   .brand-mark{width:40px;height:40px}.site-header nav button{font-size:10px}.score-ribbon-card{width:156px;flex-basis:156px}.story-heading>span{display:none}.story-heading h2,.section-bar h2{font-size:21px}.story-rail{grid-template-columns:repeat(6,100px)}.story-orbit{width:78px;height:78px}.story-orbit .team-badge{width:46px;height:46px}.story-bubble>strong{font-size:9px}.story-bubble>small{font-size:7px}
   .season-hero{padding:28px 24px;min-height:540px}.hero-copy h2{font-size:45px;margin-top:22px}.hero-copy p{font-size:12px}.hero-actions{flex-direction:column;align-items:stretch}.hero-data{left:24px;right:24px;gap:16px;justify-content:space-between}.hero-data>span{display:block}.hero-data strong,.hero-data small{display:block}.hero-data strong{font-size:18px}.hero-data small{margin-top:2px}.hero-court{right:-230px}.headlines-panel{padding:22px}.section-bar{align-items:flex-start;gap:15px;flex-direction:column}.dashboard-grid{margin-inline:12px}.page-heading{padding-top:26px}.page-heading h1{font-size:32px}.page-root{padding:22px 12px 46px}.metrics-grid.three{grid-template-columns:repeat(2,1fr)}.scouting-header,.compare-header{align-items:flex-start;flex-direction:column}.scout-search{min-width:0;width:100%}
 }
+
+/* Official team identity marks */
+.team-badge{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(circle at 35% 28%,hsl(var(--team-hue) 48% 27%),hsl(var(--team-hue) 48% 13%));color:hsl(var(--team-hue) 90% 78%)}
+.team-badge>span{position:absolute;inset:0;z-index:1;display:grid;place-items:center;font:inherit;color:inherit}
+.team-badge>img{position:relative;z-index:2;width:82%;height:82%;display:block;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.28))}
+.team-badge.small>img{width:84%;height:84%}
+.story-orbit .team-badge>img{width:86%;height:86%}
+.game-row-matchup{display:flex!important;align-items:center;gap:7px;margin-top:4px}
+.game-row-matchup>span{display:inline-flex;align-items:center;gap:5px}
+.game-row-matchup>i{font-style:normal;color:#66728a;font-size:8px;font-weight:600}
+.game-row-matchup .team-badge.small{width:23px;height:23px;border-radius:7px}
+.game-comparison span small{display:flex;align-items:center;gap:4px}
+.game-comparison>div>span:first-child small{justify-content:flex-end}
+.game-comparison span small .team-badge.small{width:18px;height:18px;border-radius:5px}
+.log-matchup{display:inline-flex!important;align-items:center;gap:7px;white-space:nowrap}
+.log-matchup .team-badge.small{width:25px;height:25px;border-radius:7px}
+.palette-results>button:has(.team-badge){grid-template-columns:31px 1fr auto 20px}
+@media(max-width:460px){.palette-results>button:has(.team-badge){grid-template-columns:31px 1fr 18px}.palette-results>button:has(.team-badge)>em{display:none}}
