@@ -5,11 +5,11 @@ const title = document.querySelector("#page-title");
 const kicker = document.querySelector("#page-kicker");
 
 const pages = [
-  {id:"overview", label:"League", title:"League pulse", kicker:"SEASON INTELLIGENCE", icon:"⌂"},
+  {id:"overview", label:"Home", title:"Season intelligence", kicker:"2023/24 NBA REGULAR SEASON", icon:"⌂"},
   {id:"games", label:"Games", title:"Game center", kicker:"RESULTS / GAME FLOW", icon:"◫"},
   {id:"teams", label:"Teams", title:"Team lab", kicker:"IDENTITY / PERFORMANCE", icon:"◎"},
   {id:"players", label:"Players", title:"Player lab", kicker:"PRODUCTION / EFFICIENCY", icon:"◉"},
-  {id:"scouting", label:"Scout", title:"Similarity finder", kicker:"PLAYER DISCOVERY", icon:"⌁"},
+  {id:"scouting", label:"Scouting", title:"Similarity finder", kicker:"PLAYER DISCOVERY", icon:"⌁"},
   {id:"compare", label:"Compare", title:"Comparison room", kicker:"SIDE-BY-SIDE ANALYSIS", icon:"⇄"}
 ];
 
@@ -45,6 +45,22 @@ function emptyState(message) {
   return `<div class="empty-state"><span>○</span><strong>No results</strong><p>${message}</p></div>`;
 }
 
+function renderScoreRibbon() {
+  const ribbon = document.querySelector("#score-ribbon");
+  ribbon.innerHTML = data.games.slice(0,6).map(game => {
+    const awayWon=game.awayScore > game.homeScore;
+    return `<button class="score-ribbon-card" data-score-game="${game.id}">
+      <small>${game.date.slice(5).replace("-",".")} · FINAL</small>
+      <span class="${awayWon ? "winner" : ""}">${teamBadge(game.away,true)}<strong>${game.away}</strong><b>${game.awayScore}</b></span>
+      <span class="${!awayWon ? "winner" : ""}">${teamBadge(game.home,true)}<strong>${game.home}</strong><b>${game.homeScore}</b></span>
+    </button>`;
+  }).join("");
+  ribbon.querySelectorAll("[data-score-game]").forEach(button => button.addEventListener("click",() => {
+    state.selectedGame=button.dataset.scoreGame;
+    location.hash="games";
+  }));
+}
+
 function similarity(target) {
   const candidates = data.players.filter(player => player.id !== target.id && player.totalMin >= 500 && family(player.pos) === family(target.pos));
   const pool = [target,...candidates];
@@ -72,6 +88,9 @@ function renderOverview() {
   const offense = [...data.teams].sort((a,b) => b.ortg-a.ortg)[0];
   const defense = [...data.teams].sort((a,b) => a.drtg-b.drtg)[0];
   const scorer = [...qualifiedPlayers].sort((a,b) => b.pts-a.pts)[0];
+  const playmaker = [...qualifiedPlayers].sort((a,b) => b.ast-a.ast)[0];
+  const rebounder = [...qualifiedPlayers].sort((a,b) => b.reb-a.reb)[0];
+  const fastest = [...data.teams].sort((a,b) => b.pace-a.pace)[0];
   const maxWins = Math.max(...teams.map(team => team.wins));
   const paceMin = Math.min(...data.teams.map(team => team.pace));
   const paceMax = Math.max(...data.teams.map(team => team.pace));
@@ -79,13 +98,41 @@ function renderOverview() {
   const netMax = Math.max(...data.teams.map(netRating));
 
   root.innerHTML = `
-    <section class="overview-intro"><p>Read the season in seconds. Start with the league picture, then move directly into a team, player or matchup.</p><div class="segmented" aria-label="Filter overview by conference">${["All","East","West"].map(item => `<button class="${state.conference === item ? "active" : ""}" data-conference="${item}">${item}</button>`).join("")}</div></section>
-    <section class="signal-strip">
-      <button class="signal featured" data-team-jump="${best.abbr}"><span class="signal-index">01</span><small>BEST RECORD</small><strong>${best.wins}–${best.losses}</strong><p>${best.name}</p><i>Open team →</i></button>
-      <button class="signal" data-team-jump="${offense.abbr}"><span class="signal-index">02</span><small>TOP OFFENSE</small><strong>${offense.ortg}</strong><p>${offense.name} ORTG</p><i>Open team →</i></button>
-      <button class="signal" data-team-jump="${defense.abbr}"><span class="signal-index">03</span><small>TOP DEFENSE</small><strong>${defense.drtg}</strong><p>${defense.name} DRTG</p><i>Open team →</i></button>
-      <button class="signal" data-player-jump="${scorer.id}"><span class="signal-index">04</span><small>SCORING LEADER</small><strong>${scorer.pts}</strong><p>${scorer.name} PPG</p><i>Open player →</i></button>
+    <section class="story-section">
+      <div class="story-heading"><div><span class="eyebrow">SEASON STORIES</span><h2>Inside the numbers</h2></div><span>Tap a story to explore</span></div>
+      <div class="story-rail">
+        <button class="story-bubble" data-team-jump="${best.abbr}"><span class="story-orbit purple">${teamBadge(best.abbr)}</span><strong>Best record</strong><small>${best.wins}–${best.losses}</small></button>
+        <button class="story-bubble" data-player-jump="${scorer.id}"><span class="story-orbit coral"><b>${scorer.pts}</b><i>PPG</i></span><strong>Scoring crown</strong><small>${scorer.name}</small></button>
+        <button class="story-bubble" data-player-jump="${playmaker.id}"><span class="story-orbit blue"><b>${playmaker.ast}</b><i>APG</i></span><strong>Floor general</strong><small>${playmaker.name}</small></button>
+        <button class="story-bubble" data-team-jump="${defense.abbr}"><span class="story-orbit mint">${teamBadge(defense.abbr)}</span><strong>Top defense</strong><small>${defense.drtg} DRTG</small></button>
+        <button class="story-bubble" data-player-jump="${rebounder.id}"><span class="story-orbit amber"><b>${rebounder.reb}</b><i>RPG</i></span><strong>Glass cleaner</strong><small>${rebounder.name}</small></button>
+        <button class="story-bubble" data-team-jump="${fastest.abbr}"><span class="story-orbit cobalt">${teamBadge(fastest.abbr)}</span><strong>Fastest pace</strong><small>${fastest.pace} POSS</small></button>
+      </div>
     </section>
+    <section class="editorial-grid">
+      <article class="season-hero">
+        <div class="hero-court" aria-hidden="true"><i></i><b></b></div>
+        <div class="hero-copy">
+          <span class="hero-tag">COURTVISION ORIGINAL</span>
+          <h2>The season,<br><em>decoded.</em></h2>
+          <p>Explore every team, player and game from the complete 2023/24 regular season through one connected analytics experience.</p>
+          <div class="hero-actions"><button class="hero-primary" data-go="games">Explore Game Center <span>→</span></button><button class="hero-secondary" data-go="players">Open Player Lab</button></div>
+        </div>
+        <div class="hero-data">
+          <span><strong>${data.meta.gameCount.toLocaleString()}</strong><small>GAMES</small></span>
+          <span><strong>${data.meta.playerCount}</strong><small>PLAYERS</small></span>
+          <span><strong>30</strong><small>TEAMS</small></span>
+        </div>
+      </article>
+      <aside class="headlines-panel">
+        <div class="headline-title"><span class="eyebrow">HEADLINES</span><h2>What defined the season</h2></div>
+        <button data-team-jump="${best.abbr}"><span>01</span><div><strong>${best.name} set the standard</strong><small>League-best ${best.wins}–${best.losses} record</small></div><i>→</i></button>
+        <button data-player-jump="${scorer.id}"><span>02</span><div><strong>${scorer.name} led all scorers</strong><small>${scorer.pts} points per game</small></div><i>→</i></button>
+        <button data-team-jump="${offense.abbr}"><span>03</span><div><strong>${offense.name} powered the top offense</strong><small>${offense.ortg} points per 100 possessions</small></div><i>→</i></button>
+        <button data-go="scouting"><span>04</span><div><strong>Find statistical lookalikes</strong><small>Compare player profiles with transparent evidence</small></div><i>→</i></button>
+      </aside>
+    </section>
+    <section class="section-bar"><div><span class="eyebrow">LEAGUE INTELLIGENCE</span><h2>Explore the season</h2></div><div class="segmented" aria-label="Filter overview by conference">${["All","East","West"].map(item => `<button class="${state.conference === item ? "active" : ""}" data-conference="${item}">${item}</button>`).join("")}</div></section>
     <section class="dashboard-grid">
       <article class="panel standings-panel"><div class="panel-heading"><div><span class="eyebrow">RECORD RACE</span><h2>${state.conference === "All" ? "League" : `${state.conference}ern Conference`} standings</h2></div><button class="ghost-button" data-go="teams">Team lab <span>→</span></button></div><div class="standings-list">${teams.map((team,index) => `<button class="standing-row" data-team-jump="${team.abbr}"><span class="standing-rank">${String(index+1).padStart(2,"0")}</span>${teamBadge(team.abbr,true)}<span class="standing-name"><strong>${team.name}</strong><small>${team.conference} · ${signed(netRating(team))} NET</small></span><span class="record-bar"><i style="width:${team.wins/maxWins*100}%"></i></span><strong class="standing-record">${team.wins}<small>–${team.losses}</small></strong></button>`).join("")}</div></article>
       <article class="panel leaders-panel"><div class="panel-heading stacked"><div><span class="eyebrow">PLAYER LEADERS · 58+ GP</span><h2>Who is setting the pace?</h2></div><div class="metric-tabs">${[["pts","PTS"],["reb","REB"],["ast","AST"],["ts","TS%"]].map(([key,label]) => `<button class="${state.leaderMetric === key ? "active" : ""}" data-leader-metric="${key}">${label}</button>`).join("")}</div></div><div class="leader-list">${leaders.map((player,index) => `<button data-player-jump="${player.id}" class="leader-row ${index === 0 ? "first" : ""}"><span class="leader-rank">${index+1}</span>${teamBadge(player.team,true)}<span><strong>${player.name}</strong><small>${player.team} · ${player.pos}</small></span><b>${player[state.leaderMetric]}<small>${leaderLabels[state.leaderMetric]}</small></b></button>`).join("")}</div></article>
@@ -293,9 +340,11 @@ const renderers = {overview:renderOverview,games:renderGames,teams:renderTeams,p
 function renderPage() {
   const pageId = location.hash.replace("#","") || "overview";
   const active = pages.find(page => page.id === pageId) || pages[0];
+  document.body.dataset.page=active.id;
   title.textContent=active.title; kicker.textContent=active.kicker;
-  nav.innerHTML=pages.map(page => `<button class="${page.id === active.id ? "active" : ""}" data-go="${page.id}"><span>${page.icon}</span><strong>${page.label}</strong></button>`).join("");
-  (renderers[active.id] || renderOverview)(); bindPageLinks(); document.querySelector("main").scrollTo({top:0,behavior:"instant"});
+  nav.innerHTML=pages.map(page => `<button class="${page.id === active.id ? "active" : ""}" data-go="${page.id}"><strong>${page.label}</strong></button>`).join("");
+  renderScoreRibbon();
+  (renderers[active.id] || renderOverview)(); bindPageLinks(); window.scrollTo({top:0,behavior:"instant"});
 }
 
 const palette = document.querySelector("#command-palette");
