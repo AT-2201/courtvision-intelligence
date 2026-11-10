@@ -31,21 +31,11 @@ function trueShooting(rows) {
   return attempts ? points / (2 * attempts) * 100 : 0;
 }
 
-const nbaTeamIds = {
-  ATL:1610612737,BOS:1610612738,CLE:1610612739,NOP:1610612740,CHI:1610612741,
-  DAL:1610612742,DEN:1610612743,GSW:1610612744,HOU:1610612745,LAC:1610612746,
-  LAL:1610612747,MIA:1610612748,MIL:1610612749,MIN:1610612750,BKN:1610612751,
-  NYK:1610612752,ORL:1610612753,IND:1610612754,PHI:1610612755,PHX:1610612756,
-  POR:1610612757,SAC:1610612758,SAS:1610612759,OKC:1610612760,TOR:1610612761,
-  UTA:1610612762,MEM:1610612763,WAS:1610612764,DET:1610612765,CHA:1610612766
-};
-
 function teamBadge(abbr, small = false) {
   const hues = {BOS:145,OKC:205,DEN:43,MIN:207,LAC:222,NYK:24,DAL:199,MIL:151,CLE:350,ORL:220,PHX:284,GSW:44,LAL:276,SAC:268};
   const hue = hues[abbr] || [...abbr].reduce((sum,char) => sum + char.charCodeAt(0),0) % 360;
   const team = teamByAbbr(abbr);
-  const logoId = nbaTeamIds[abbr];
-  const logo = logoId ? `<img src="https://cdn.nba.com/logos/nba/${logoId}/primary/L/logo.svg" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : "";
+  const logo = `<img src="assets/team-logos/${abbr}.svg" alt="" loading="lazy" decoding="async" onerror="this.remove()">`;
   return `<span class="team-badge ${small ? "small" : ""}" style="--team-hue:${hue}" role="img" aria-label="${team?.name || abbr} logo"><span aria-hidden="true">${abbr}</span>${logo}</span>`;
 }
 
